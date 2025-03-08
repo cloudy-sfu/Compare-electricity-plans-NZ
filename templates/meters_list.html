@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>New Zealand Electricity</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+</head>
+<body class="container-md">
+    <div class="row alert justify-content-center">
+        <div class="col-md-6">
+            <a href="/">Back</a>
+            <h1>Switch data source</h1>
+            <p>Before merging electricity usage history, retrieve data from the new
+                electricity provider at least once. Therefore, the new provider can
+                appear in the following list.
+            </p>
+            {% if failed_reason %}
+                <p class="text-danger">Error: {{ failed_reason }}</p>
+            {% endif %}
+            <p class="text-danger" id="ajax-error-msg"></p>
+            <form action="/migrate_meters/migrate" method="post" id="migrate">
+                {% csrf_token %}
+                {{ meter_form.as_p }}
+                <div class="text-center">
+                    <input type="submit" value="Merge" class="btn btn-primary">
+                </div>
+            </form>
+        </div>
+    </div>
+<script>
+    $('#migrate').submit(function(event) {
+        event.preventDefault();
+
+        const form = $(this);
+        const action_target = form.attr('action'); // Get the form's action URL
+        const error_msg = document.getElementById("ajax-error-msg");
+        error_msg.textContent = "";
+        $.ajax({
+            type: 'POST',
+            url: action_target,
+            data: form.serialize(), // Serialize the form data
+            success: function() {
+                error_msg.textContent = "Done.";
+            },
+            error: function(response) {
+                error_msg.textContent = response.responseText;
+            }
+        });
+    });
+</script>
+</body>
+</html>
