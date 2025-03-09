@@ -6,12 +6,12 @@ class ChargingPlan(models.Model):
     company = models.CharField(max_length=32)
     name = models.CharField(max_length=64)
     applied_date = models.DateField()
-    daily_fixed_price = models.FloatField(help_text="Unit: New Zealand cent")
+    daily_fixed_price = models.FloatField(help_text="Exclude GST. Unit: New Zealand cent")
     GST_ratio = models.FloatField(default=0.15)
-    levy = models.FloatField(help_text="Unit: New Zealand cent")
+    levy = models.FloatField(help_text="Exclude GST. Unit: New Zealand cent")
     default_unit_price = models.FloatField(
         help_text="The unit price in other time. It excludes the time when special prices "
-                  "are applied.  Unit: New Zealand cent"
+                  "are applied. Exclude GST.  Unit: New Zealand cent"
     )
 
     def __str__(self):
@@ -25,7 +25,7 @@ class Price(models.Model):
         help_text="Time period name that this price applies on, e.g. peak, off-peak, "
                   "daytime, night, weekdays, weekend."
     )
-    unit_price = models.FloatField(help_text="Unit: New Zealand cent")
+    unit_price = models.FloatField(help_text="Exclude GST. Unit: New Zealand cent")
     DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
                     'Sunday']
     for day in DAYS_OF_WEEK:

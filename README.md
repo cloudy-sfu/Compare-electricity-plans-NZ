@@ -48,3 +48,6 @@ python manage.py runserver
 
 Open the browser and visit http://127.0.0.1:8000/ 
 
+To find charging plans:
+
+- [Contact Energy](https://journey.contact.co.nz/residential/find-a-plan)
