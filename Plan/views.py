@@ -282,12 +282,12 @@ def compare(req):
     plan_name = []
     total_price = []
     total_days = (end_date_next_midnight - start_date_midnight) / pd.Timedelta(days=1)
-    for plan in compare_form.cleaned_data['plans']:
+    for i, plan in enumerate(compare_form.cleaned_data['plans']):
         usage[str(plan.id)] = plan.default_unit_price
         for price in plan.price_set.all():
-            for i, day in enumerate(Price.DAYS_OF_WEEK):
+            for j, day in enumerate(Price.DAYS_OF_WEEK):
                 if getattr(price, day):
-                    usage.loc[(usage['day_of_week'] == i) &
+                    usage.loc[(usage['day_of_week'] == j) &
                               (usage['time'] < price.time_to) &
                               (usage['time'] >= price.time_from), str(plan.id)] = (
                         price.unit_price
@@ -296,9 +296,10 @@ def compare(req):
                 (usage[str(plan.id)] * (usage['value'] + plan.levy)).sum()
                 + total_days * plan.daily_fixed_price
         ) * (1 + plan.GST_ratio)) / 100)
-        plan_name.append(str(plan))
+        plan_name.append(("\n\n\n" if i % 2 == 0 else "") +
+                         f"{plan.company}\n{plan.name}\n{plan.applied_date}")
 
-    bar = pyecharts.charts.Bar(init_opts=pyecharts.options.InitOpts(width="100%"))
+    bar = pyecharts.charts.Bar()
     bar.add_xaxis(plan_name)
     bar.add_yaxis("Electricity fee (NZD)", total_price)
     bar.set_global_opts(
@@ -306,13 +307,17 @@ def compare(req):
             title="Electricity fee",
         ),
         xaxis_opts=pyecharts.options.AxisOpts(
-            type_="category", name="Plan", ),
+            type_="category", name="Plan",
+            axislabel_opts=pyecharts.options.LabelOpts(interval=0),
+        ),
         yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity fee (NZD)"),
         legend_opts=pyecharts.options.LegendOpts(is_show=False),
     )
+    bar_grid = pyecharts.charts.Grid(init_opts=pyecharts.options.InitOpts(width="100%"))
+    bar_grid.add(bar, grid_opts=pyecharts.options.GridOpts(pos_bottom="20%"))
 
     tab = pyecharts.charts.Tab(page_title="New Zealand Electricity")
-    tab.add(bar, "Comparison")
+    tab.add(bar_grid, "Comparison")
     htm = tab.render_embed()
 
     tree = BeautifulSoup(htm, 'html.parser')
