@@ -3,7 +3,7 @@ import pyecharts
 from bs4 import BeautifulSoup
 from django import forms
 from django.contrib.contenttypes.models import ContentType
-from django.db import transaction
+from django.db import transaction, OperationalError
 from django.db.models import Q, Min, Max
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -119,6 +119,8 @@ def migrate_meters(req):
             new_meter_g.delete()
     except Meter.DoesNotExist:
         pass
+    except OperationalError:
+        HttpResponse("Database busy, please try later.", status=500)
     prev_meter_g.provider_id = new_ct
     prev_meter_g.meter_id = new_meter_id
     prev_meter_g.save()
@@ -268,25 +270,23 @@ def select_meter(req):
     usage = pd.DataFrame.from_records(usage)
     usage['time_slot'] = usage['time_slot'].dt.tz_convert(tz=TIME_ZONE)
 
-    line = (
-        pyecharts.charts.Line(
-            init_opts=pyecharts.options.InitOpts(width="100%")
-        )
-        .add_xaxis(usage['time_slot'].dt.strftime("%Y-%m-%d %H:%M").tolist())
-        .add_yaxis("Electricity (kWh)", usage['value'].tolist(), sampling='lttb',
-                   is_smooth=True, label_opts=pyecharts.options.LabelOpts(is_show=False))
-        .set_global_opts(
-            title_opts=pyecharts.options.TitleOpts(
-                title="Line plot of electricity usage",
-            ),
-            datazoom_opts=[
-                pyecharts.options.DataZoomOpts(xaxis_index=0),
-            ],
-            yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity (kWh)"),
-            legend_opts=pyecharts.options.LegendOpts(is_show=False),
-        )
+    line = pyecharts.charts.Line(init_opts=pyecharts.options.InitOpts(width="100%"))
+    line.add_xaxis(usage['time_slot'].dt.strftime("%Y-%m-%d %H:%M").tolist())
+    line.add_yaxis(
+        "Electricity (kWh)", usage['value'].tolist(),
+        sampling='lttb', is_smooth=True,
+        label_opts=pyecharts.options.LabelOpts(is_show=False)
     )
-
+    line.set_global_opts(
+        title_opts=pyecharts.options.TitleOpts(
+            title="Line plot of electricity usage",
+        ),
+        datazoom_opts=[
+            pyecharts.options.DataZoomOpts(xaxis_index=0),
+        ],
+        yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity (kWh)"),
+        legend_opts=pyecharts.options.LegendOpts(is_show=False),
+    )
     usage['date'] = usage['time_slot'].dt.strftime("%Y-%m-%d")
     usage_daily = usage.groupby('date').aggregate('sum', 'value')
     usage_daily.reset_index(inplace=True)
@@ -296,52 +296,50 @@ def select_meter(req):
     const value = params.value[1];
     return date + '<br>' + value + ' kWh';
 }""")
-    heatmap = (
-        pyecharts.charts.Calendar(
-            init_opts=pyecharts.options.InitOpts(width="100%"),
+
+    heatmap = pyecharts.charts.Calendar(
+        init_opts=pyecharts.options.InitOpts(width="100%"),
+    )
+    heatmap.add(
+        series_name="Electricity (kWh)",
+        yaxis_data=usage_daily.to_dict(orient='split', index=False)['data'],
+        calendar_opts=pyecharts.options.CalendarOpts(
+            range_=[start_date, end_date],
+            width=str(20 * count_weeks(start_date, end_date)),
+            height='140',
+        ),
+        tooltip_opts=pyecharts.options.TooltipOpts(
+            formatter=tooltip_formatter
         )
-        .add(
-            series_name="Electricity (kWh)",
-            yaxis_data=usage_daily.to_dict(orient='split', index=False)['data'],
-            calendar_opts=pyecharts.options.CalendarOpts(
-                range_=[start_date, end_date],
-                width=str(20 * count_weeks(start_date, end_date)),
-                height='140',
-            ),
-            tooltip_opts=pyecharts.options.TooltipOpts(
-                formatter=tooltip_formatter
-            )
-        )
-        .set_global_opts(
-            title_opts=pyecharts.options.TitleOpts(
-                title="Total electricity usage in each day",
-            ),
-            visualmap_opts=pyecharts.options.VisualMapOpts(
-                min_=0, max_=usage_daily['value'].max(),
-                orient="horizontal",
-                is_piecewise=True,
-                pos_top="230px",
-                pos_left="100px",
-            ),
-            legend_opts=pyecharts.options.LegendOpts(is_show=False),
-        )
+    )
+    heatmap.set_global_opts(
+        title_opts=pyecharts.options.TitleOpts(
+            title="Total electricity usage in each day",
+        ),
+        visualmap_opts=pyecharts.options.VisualMapOpts(
+            min_=0, max_=usage_daily['value'].max(),
+            orient="horizontal",
+            is_piecewise=True,
+            pos_top="230px",
+            pos_left="100px",
+            range_color=["#d6e685", "#8cc665", "#44a340", "#1e6823", "#00441b"],
+        ),
+        legend_opts=pyecharts.options.LegendOpts(is_show=False),
     )
 
     usage['hour'] = usage['time_slot'].dt.hour
     usage_hours = usage.groupby('hour').aggregate('mean', 'value')
     usage_hours['value'] = usage_hours['value'].round(2)
-    bar = (
-        pyecharts.charts.Bar(init_opts=pyecharts.options.InitOpts(width="100%"),)
-        .add_xaxis(usage_hours.index.tolist())
-        .add_yaxis("Electricity (kWh)", usage_hours['value'].tolist())
-        .set_global_opts(
-            title_opts=pyecharts.options.TitleOpts(
-                title="Average electricity usage in the same hour of every day",
-            ),
-            xaxis_opts=pyecharts.options.AxisOpts(type_="category", name="Hour"),
-            yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity (kWh)"),
-            legend_opts=pyecharts.options.LegendOpts(is_show=False),
-        )
+    bar = pyecharts.charts.Bar(init_opts=pyecharts.options.InitOpts(width="100%"))
+    bar.add_xaxis(usage_hours.index.tolist())
+    bar.add_yaxis("Electricity (kWh)", usage_hours['value'].tolist())
+    bar.set_global_opts(
+        title_opts=pyecharts.options.TitleOpts(
+            title="Average electricity usage in the same hour of every day",
+        ),
+        xaxis_opts=pyecharts.options.AxisOpts(type_="category", name="Hour"),
+        yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity (kWh)"),
+        legend_opts=pyecharts.options.LegendOpts(is_show=False),
     )
 
     tab = pyecharts.charts.Tab(page_title="New Zealand Electricity")

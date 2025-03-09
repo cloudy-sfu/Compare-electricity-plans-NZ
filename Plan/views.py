@@ -298,19 +298,17 @@ def compare(req):
         ) * (1 + plan.GST_ratio)) / 100)
         plan_name.append(str(plan))
 
-    bar = (
-        pyecharts.charts.Bar(init_opts=pyecharts.options.InitOpts(width="100%"))
-        .add_xaxis(plan_name)
-        .add_yaxis("Electricity fee (NZD)", total_price)
-        .set_global_opts(
-            title_opts=pyecharts.options.TitleOpts(
-                title="Electricity fee",
-            ),
-            xaxis_opts=pyecharts.options.AxisOpts(
-                type_="category", name="Plan", ),
-            yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity fee (NZD)"),
-            legend_opts=pyecharts.options.LegendOpts(is_show=False),
-        )
+    bar = pyecharts.charts.Bar(init_opts=pyecharts.options.InitOpts(width="100%"))
+    bar.add_xaxis(plan_name)
+    bar.add_yaxis("Electricity fee (NZD)", total_price)
+    bar.set_global_opts(
+        title_opts=pyecharts.options.TitleOpts(
+            title="Electricity fee",
+        ),
+        xaxis_opts=pyecharts.options.AxisOpts(
+            type_="category", name="Plan", ),
+        yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity fee (NZD)"),
+        legend_opts=pyecharts.options.LegendOpts(is_show=False),
     )
 
     tab = pyecharts.charts.Tab(page_title="New Zealand Electricity")

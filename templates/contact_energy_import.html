@@ -36,7 +36,7 @@
         const form_data = new FormData(form[0]);
         const action_target = form.attr('action'); // Get the form's action URL
         const error_msg = document.getElementById("ajax-error-msg");
-        error_msg.textContent = "";
+        error_msg.textContent = "Importing ...";
         $.ajax({
             type: 'POST',
             url: action_target,
