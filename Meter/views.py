@@ -342,10 +342,24 @@ def select_meter(req):
         legend_opts=pyecharts.options.LegendOpts(is_show=False),
     )
 
+    total_usage = usage['value'].sum()
+    total = pyecharts.charts.Bar()
+    total.add_xaxis(['Total'])
+    total.add_yaxis("Electricity (kWh)", [total_usage])
+    total.set_global_opts(
+        title_opts=pyecharts.options.TitleOpts(
+            title=f"Total electricity usage from {start_date} to {end_date}",
+        ),
+        xaxis_opts=pyecharts.options.AxisOpts(type_="category"),
+        yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity (kWh)"),
+        legend_opts=pyecharts.options.LegendOpts(is_show=False),
+    )
+
     tab = pyecharts.charts.Tab(page_title="New Zealand Electricity")
     tab.add(line, "Time series view")
     tab.add(heatmap, "Calendar view")
     tab.add(bar, "Circadian view")
+    tab.add(total, "Total view")
     htm = tab.render_embed()
 
     tree = BeautifulSoup(htm, 'html.parser')
