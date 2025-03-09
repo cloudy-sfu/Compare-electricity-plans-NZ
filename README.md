@@ -3,6 +3,14 @@
 
 ![dependencies Python 3.12](https://shields.io/badge/dependencies-Python_3.12-blue)
 
+[Power switch](https://www.powerswitch.org.nz/) helps households compare residential electricity by estimating annual consumption based on typical usage profiles. However, its estimation is too general to capture the diverse and individualized electricity usage behaviors of different households, often leading to imprecise estimates. This program has the same objective as *power switch*, and tries to improve the accuracy by reading personal electricity usage history from the users' meter. It doesn't collect the list of electricity charging plans widely, but allows the user to manually add charging plans to compare.
+
+**Contribution: ** The program can only read electricity usage from the following list now. 
+
+- Contact Energy
+
+If you can provide account of other electricity provider, or can write a web crawler to get data from other electricity provider, welcome to contribute.
+
 ## Install
 
 Create a Python virtual environment and activate.

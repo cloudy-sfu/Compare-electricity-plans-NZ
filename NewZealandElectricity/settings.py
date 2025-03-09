@@ -24,7 +24,7 @@ with open("token.json") as f:
     SECRET_KEY = json.load(f)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = []
 
