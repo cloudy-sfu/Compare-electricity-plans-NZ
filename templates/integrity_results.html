@@ -12,19 +12,55 @@
     <div class="row alert justify-content-center">
         <div class="col-md-6">
             <a href="/integrity">Back</a>
-            <p class="mt-4">Meter: {{ meter }}</p>
-            <p>Requested start date: {{ start_date | date:"Y-m-d" }}</p>
-            <p>Requested end date: {{ end_date | date:"Y-m-d" }}</p>
-            <p>Actual earliest record: {{ min_time | date:"Y-m-d H:i:s O" }}</p>
-            <p>Actual latest record: {{ max_time | date:"Y-m-d H:i:s O" }}</p>
-            <p>Inferred sampling frequency: {{ sampling_frequency }}</p>
-            <p>Number of missing records: {{ n_missing }} / {{ n_total }}</p>
+            <table class="table mt-4">
+                <thead>
+                <tr><td>Item</td><td>Value</td></tr>
+                </thead>
+                <tbody>
+                <tr><td>Meter</td><td>{{ meter }}</td></tr>
+                <tr><td>Request start date</td><td>{{ start_date | date:"Y-m-d" }}</td></tr>
+                <tr><td>Request end date</td><td>{{ end_date | date:"Y-m-d" }}</td></tr>
+                <tr>
+                    <td>Observed start time</td>
+                    <td {% if min_time.date != start_date %} class="text-danger" {% endif %}>
+                        {{ min_time | date:"Y-m-d H:i:s O" }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Observed end time</td>
+                    <td {% if max_time.date != end_date %} class="text-danger" {% endif %}>
+                        {{ max_time | date:"Y-m-d H:i:s O" }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Inferred sampling frequency</td>
+                    <td>
+                        {{ sampling_frequency }} <br>
+                        <i>therefore expect {{ theoretical_total }} records</i>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Observed number of records</td>
+                    <td {% if n_total != theoretical_total %} class="text-danger" {% endif %}>
+                        {{ n_total }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Number of missing records</td>
+                    <td {% if n_missing > 0 %} class="text-danger" {% endif %}>
+                        {{ n_missing }} / {{ n_total }}
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            {% if n_missing > 0 %}
             <p>Missing records:</p>
             <ul>
                 {% for row in missing_time %}
                     <li>{{ row | date:"Y-m-d H:i:s O" }}</li>
                 {% endfor %}
             </ul>
+            {% endif %}
         </div>
     </div>
 </body>

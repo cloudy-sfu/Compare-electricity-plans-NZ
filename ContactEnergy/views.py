@@ -47,7 +47,7 @@ class ContactEnergyLogin(forms.Form):
 
 def validate_end_date(input_date):
     today = datetime.now(tz=pytz.timezone(TIME_ZONE)).date()
-    latest_date = today - timedelta(days=2)
+    latest_date = today - timedelta(days=3)
     if input_date > latest_date:
         raise ValidationError("The date cannot be later than " + latest_date.strftime("%Y-%m-%d"))
 
@@ -75,7 +75,7 @@ class ContactEnergyAccount(forms.Form):
         required=True, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
         validators=[validate_end_date],
-        help_text="No later than the before yesterday."
+        help_text="No later than 3 days ago."
     )
     overwrite = forms.BooleanField(
         label="",

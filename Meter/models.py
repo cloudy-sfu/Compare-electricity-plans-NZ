@@ -25,3 +25,8 @@ class Usage(models.Model):
 
     def __str__(self):
         return f"{self.meter} {self.time_slot.strftime('%Y-%m-%d %H:%M')}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['meter', 'time_slot'], name='unique_usage'),
+        ]

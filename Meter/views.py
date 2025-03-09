@@ -193,6 +193,7 @@ def check_integrity(req):
     max_time = usage.iloc[-1, 0]
     full_index = pd.date_range(min_time, max_time, freq=sampling_frequency_mode)
     missing_time = full_index.difference(usage['time_slot'])
+    theoretical_total = round((max_time - min_time) / sampling_frequency_mode) + 1
     return render(req, 'integrity_results.html', context={
         "meter": str(meter),
         "start_date": start_date,
@@ -201,6 +202,7 @@ def check_integrity(req):
         "max_time": max_time,
         "n_missing": missing_time.shape[0],
         "n_total": usage.shape[0],
+        "theoretical_total": theoretical_total,
         "missing_time": missing_time.tolist(),
         "sampling_frequency": sampling_frequency_mode,
     })
