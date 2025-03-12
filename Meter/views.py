@@ -324,7 +324,6 @@ def select_meter(req):
             is_piecewise=True,
             pos_top="230px",
             pos_left="100px",
-            range_color=["#d6e685", "#8cc665", "#44a340", "#1e6823", "#00441b"],
         ),
         legend_opts=pyecharts.options.LegendOpts(is_show=False),
     )
