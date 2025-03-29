@@ -31,7 +31,7 @@ class ChangeChargingPlan(forms.ModelForm):
                 {"class": "form-control", "type": "number",
                  "step": 0.01}),
             "GST_ratio": forms.TextInput({"class": "form-control", "type": "number",
-                                          "step": 0.0001}),
+                                          "step": 0.001}),
             "levy": forms.TextInput({"class": "form-control", "type": "number",
                                      "step": 0.01}),
             "default_unit_price": forms.TextInput(
