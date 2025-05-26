@@ -1,4 +1,4 @@
-# Power switch customized
+# Compare NZ electricity plans
  Compare electricity fee based on personal electricity usage history between different electricity plans in New Zealand
 
 ![dependencies Python 3.12](https://shields.io/badge/dependencies-Python_3.12-blue)
