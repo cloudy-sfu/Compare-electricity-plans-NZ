@@ -55,11 +55,7 @@
             </table>
             {% if n_missing > 0 %}
             <p>Missing records:</p>
-            <ul>
-                {% for row in missing_time %}
-                    <li>{{ row | date:"Y-m-d H:i:s O" }}</li>
-                {% endfor %}
-            </ul>
+            {{ missing_time | safe }}
             {% endif %}
         </div>
     </div>

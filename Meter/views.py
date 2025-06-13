@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pyecharts
 from bs4 import BeautifulSoup
@@ -193,6 +194,21 @@ def check_integrity(req):
     max_time = usage.iloc[-1, 0]
     full_index = pd.date_range(min_time, max_time, freq=sampling_frequency_mode)
     missing_time = full_index.difference(usage['time_slot'])
+
+    if missing_time.shape[0] == 0:
+        missing_time_pairs = pd.DataFrame(columns=['Start time', 'End time'])
+    else:
+        common_mask = missing_time.diff() > sampling_frequency_mode
+        common_idx = np.argwhere(common_mask).flatten()
+        start_idx = [0] + common_idx.tolist()
+        missing_start_time = missing_time[start_idx]
+        end_idx = (common_idx - 1).tolist() + [missing_time.shape[0] - 1]
+        missing_end_time = missing_time[end_idx]
+        missing_time_pairs = pd.DataFrame({
+            "Start time": missing_start_time,
+            "End time": missing_end_time,
+        })
+
     theoretical_total = round((max_time - min_time) / sampling_frequency_mode) + 1
     return render(req, 'integrity_results.html', context={
         "meter": str(meter),
@@ -203,7 +219,8 @@ def check_integrity(req):
         "n_missing": missing_time.shape[0],
         "n_total": usage.shape[0],
         "theoretical_total": theoretical_total,
-        "missing_time": missing_time.tolist(),
+        "missing_time": missing_time_pairs.to_html(
+            classes='table table-striped table-bordered', index=False),
         "sampling_frequency": sampling_frequency_mode,
     })
 
