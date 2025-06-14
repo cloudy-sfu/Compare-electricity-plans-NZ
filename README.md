@@ -59,3 +59,7 @@ You can find charging plans in the following pages. It's also an option to use *
 
 - [Contact](https://journey.contact.co.nz/residential/find-a-plan)
 - [Genesis](https://www.genesisenergy.co.nz/join)
+- [Powershop](https://www.powershop.co.nz/get-a-price/)
+- [Mercury](https://www.mercury.co.nz/electricity?lcsp=1YEAR)
+- [Flick](https://www.flickelectric.co.nz/)
+- [Meridian](https://www.meridianenergy.co.nz/for-home)
