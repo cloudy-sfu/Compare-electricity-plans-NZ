@@ -2,6 +2,7 @@ import pandas as pd
 import pyecharts
 from bs4 import BeautifulSoup
 from django import forms
+from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
@@ -228,7 +229,6 @@ def delete_price(req, price_id: int):
 class Compare(forms.Form):
     meter = forms.ModelChoiceField(
         queryset=Meter.objects.all(), required=True,
-        initial=Meter.objects.first(),
         widget=forms.Select({"class": "form-select"}),
     )
     plans = forms.ModelMultipleChoiceField(
@@ -246,6 +246,13 @@ class Compare(forms.Form):
         required=True, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
     )
+
+    def __init__(self, *args, **kwargs):
+        super(Compare, self).__init__(*args, **kwargs)
+        try:
+            self.fields['meter'].initial = Meter.objects.first()
+        except (OperationalError, ProgrammingError):
+            pass
 
 
 def view_compare(req, failed_reason=None):

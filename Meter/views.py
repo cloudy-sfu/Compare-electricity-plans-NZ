@@ -4,17 +4,17 @@ import pyecharts
 from bs4 import BeautifulSoup
 from django import forms
 from django.contrib.contenttypes.models import ContentType
-from django.db import transaction, OperationalError
+from django.db import transaction, OperationalError, ProgrammingError
 from django.db.models import Q, Min, Max
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
+from pyecharts.commons.utils import JsCode
 from scipy.stats import mode
 
 from NewZealandElectricity.settings import TIME_ZONE
 from .admin import get_meter_types
 from .models import Meter, Usage
-from pyecharts.commons.utils import JsCode
 
 
 # Create your views here.
@@ -137,7 +137,6 @@ def migrate_meters(req):
 class CheckIntegrity(forms.Form):
     meter = forms.ModelChoiceField(
         required=True, queryset=Meter.objects.all(),
-        initial=Meter.objects.first(),
         widget=forms.Select({"class": "form-select", "style": "white-space: normal;"})
     )
     start_date = forms.DateField(
@@ -149,6 +148,12 @@ class CheckIntegrity(forms.Form):
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.fields['meter'].initial = Meter.objects.first()
+        except (OperationalError, ProgrammingError):
+            pass
 
 def view_integrity(req, failed_reason=None):
     return render(req, "integrity.html", context={
@@ -228,7 +233,6 @@ def check_integrity(req):
 class SelectMeter(forms.Form):
     meter = forms.ModelChoiceField(
         queryset=Meter.objects.all(), required=True,
-        initial=Meter.objects.first(),
         widget=forms.Select({"class": "form-select"}),
     )
     start_date = forms.DateField(
@@ -239,6 +243,13 @@ class SelectMeter(forms.Form):
         required=True, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.fields['meter'].initial = Meter.objects.first()
+        except (OperationalError, ProgrammingError):
+            pass
 
 
 def view_select_meter(req, failed_reason=None):

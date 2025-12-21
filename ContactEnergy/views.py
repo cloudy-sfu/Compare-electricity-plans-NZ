@@ -13,7 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.db import transaction
+from django.db import transaction, OperationalError, ProgrammingError
 from django.db.models.functions import TruncDate
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
@@ -63,7 +63,6 @@ class ContactEnergyAccount(forms.Form):
     account_and_contract = forms.ModelChoiceField(
         required=True, widget=forms.Select({"class": "form-select", "style": "white-space: normal;"}),
         queryset=ContactEnergyMeter.objects.all(),
-        initial=ContactEnergyMeter.objects.first(),
     )
     start_date = forms.DateField(
         required=True, widget=forms.DateInput({
@@ -84,6 +83,13 @@ class ContactEnergyAccount(forms.Form):
         help_text="Tick this item only when data integrity of this meter has problem. It "
                   "will use fetched data to overwrite existed records."
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.fields['account_and_contract'].initial = ContactEnergyMeter.objects.first()
+        except (OperationalError, ProgrammingError):
+            pass
 
 
 # Create your views here.
