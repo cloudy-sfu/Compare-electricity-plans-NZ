@@ -53,7 +53,20 @@ Run the following command.
 python manage.py runserver
 ```
 
-Open the browser and visit http://127.0.0.1:8000/ 
+Open the browser and visit http://127.0.0.1:8000/
+
+>   [!NOTE]
+>
+>   Windows CMD deployment
+>
+>   *Disk letter is part of installation path. It is a single prefix letter e.g. `C`*
+>
+>   ```
+>   <disk_letter>:
+>   cd <installation_path>
+>   call .venv\Scripts\activate.bat
+>   start http://localhost:8000 & python manage.py runserver
+>   ```
 
 You can find charging plans in the following pages. It's also an option to use *power switch* as an index and search the companies' official websites.
 
