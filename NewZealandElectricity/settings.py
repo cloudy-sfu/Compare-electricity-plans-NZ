@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import json
 from pathlib import Path
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,7 +22,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 with open("token.json") as f:
-    SECRET_KEY = json.load(f)
+    secrets = json.load(f)
+    SECRET_KEY = secrets.get('secret_key')
+    NEON_DB_URL = secrets.get('neon_db')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -80,10 +83,8 @@ WSGI_APPLICATION = 'NewZealandElectricity.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=NEON_DB_URL, conn_max_age=600, ssl_require=True)
 }
 
 

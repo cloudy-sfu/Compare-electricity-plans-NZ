@@ -22,19 +22,21 @@ If you can provide account of other electricity provider, or can write a web cra
 
 Create a Python virtual environment and activate.
 
-Set the program's root directory as the current directory.
-
-Go to https://djecrety.ir/ and generate a secret key.
-
-Create a file `token.json`, and write the following content.
+Run the following command.
 
 ```
-{
-    "secret_key": "$secret_key"
-}
+pip install -r requirements.txt
 ```
 
-where `$secret_key` is the key you just generated.
+Create a PostgreSQL 17 database in [Neon](https://neon.com/) database, or your own PostgreSQL database.
+
+Create a file `token.json`, and write the following key-value pairs in JSON format.
+
+| Key        | Value                                                 |
+| ---------- | ----------------------------------------------------- |
+| secret_key | Go to https://djecrety.ir/ and generate a secret key. |
+| neon_db    | Connection string to Neon database.                   |
+
 
 Run the following command.
 
@@ -42,6 +44,25 @@ Run the following command.
 pip install -r requirements.txt
 python manage.py migrate
 ```
+
+
+
+>   [!NOTE]
+>
+>   Migrate from SQLite database:
+>
+>   In the old program's folder, run the following command.
+>
+>   ```
+>   python manage.py dumpdata --exclude auth.permission --exclude contenttypes > data.json
+>   ```
+>
+>   In the new program's folder, run the following command.
+>
+>   ```
+>   python manage.py migrate
+>   python manage.py loaddata data.json
+>   ```
 
 
 
