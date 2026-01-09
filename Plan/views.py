@@ -30,14 +30,14 @@ class ChangeChargingPlan(forms.ModelForm):
             "applied_date": forms.DateInput({"class": "form-control", "type": "date"}),
             "daily_fixed_price": forms.TextInput(
                 {"class": "form-control", "type": "number",
-                 "step": 0.01}),
+                 "step": "any"}),
             "GST_ratio": forms.TextInput({"class": "form-control", "type": "number",
-                                          "step": 0.001}),
+                                          "step": "any"}),
             "levy": forms.TextInput({"class": "form-control", "type": "number",
-                                     "step": 0.01}),
+                                     "step": "any"}),
             "default_unit_price": forms.TextInput(
                 {"class": "form-control", "type": "number",
-                 "step": 0.01}),
+                 "step": "any"}),
         }
         labels = {
             "daily_fixed_price": "Fixed daily charge",

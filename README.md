@@ -1,7 +1,7 @@
 # Compare electricity plans NZ
  Compare electricity fee based on personal electricity usage history between different electricity plans in New Zealand
 
-![dependencies Python 3.12](https://shields.io/badge/dependencies-Python_3.12-blue)
+![dependencies Python 3.13](https://shields.io/badge/dependencies-Python_3.12-blue)
 
 [Power switch](https://www.powerswitch.org.nz/) helps households compare residential electricity by estimating annual consumption based on typical usage profiles. However, its estimation is too general to capture the diverse and individualized electricity usage behaviors of different households, often leading to imprecise estimates. This program has the same objective as *power switch*, and tries to improve the accuracy by reading personal electricity usage history from the users' meter. It doesn't collect the list of electricity charging plans widely, but allows the user to manually add charging plans to compare.
 
