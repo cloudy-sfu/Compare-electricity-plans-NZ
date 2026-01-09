@@ -30,8 +30,6 @@ urlpatterns = [
     path('', v2.main),
     path('migrate_meters', v2.view_migrate_meters),
     path('migrate_meters/migrate', v2.migrate_meters),
-    path('get_data_contact/view_import', v1.view_import_from_v1),
-    path('get_data_contact/import', v1.import_from_v1),
     path('integrity', v2.view_integrity),
     path('integrity/check', v2.check_integrity),
     path('plans', v3.view_plans),
