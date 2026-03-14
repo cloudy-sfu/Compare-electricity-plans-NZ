@@ -59,6 +59,14 @@
         </div>
     </div>
 <script>
+    function open_html_in_new_tab(html_content) {
+        const blob = new Blob([html_content], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // Revoke after a short delay to free memory
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     $('#get_usage').submit(function(event) {
         event.preventDefault(); // Prevent the default form submission
 
@@ -74,7 +82,12 @@
                 error_msg.textContent = "Done.";
             },
             error: function(response) {
-                error_msg.textContent = response.responseText;
+                if (response.responseText.startsWith("<!DOCTYPE html>")) {
+                    // Django native error page
+                    open_html_in_new_tab(response.responseText);
+                } else {
+                    error_msg.textContent = response.responseText;
+                }
             }
         });
 

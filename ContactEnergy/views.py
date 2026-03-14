@@ -80,8 +80,8 @@ class ContactEnergyAccount(forms.Form):
         label="",
         required=False,
         widget=forms.CheckboxInput({"style": "width: 1.5rem; height: 1.5rem;"}),
-        help_text="Tick this item only when data integrity of this meter has problem. It "
-                  "will use fetched data to overwrite existed records."
+        help_text="Tick this item only when data is missing for part of a day (i.e., "
+                  "within-day gaps). The fetched records will overwrite existed ones."
     )
 
     def __init__(self, *args, **kwargs):
@@ -172,7 +172,7 @@ def contact_energy_usage(req):
     overwrite = account_form.cleaned_data.get('overwrite')
     if start_date > end_date:
         start_date, end_date = end_date, start_date
-    meter, created = Meter.objects.get_or_create(
+    meter, _ = Meter.objects.get_or_create(
         provider=ContentType.objects.get_for_model(ContactEnergyMeter),
         meter_id=account_and_contract.id,
     )
@@ -182,15 +182,14 @@ def contact_energy_usage(req):
         missing_dates = get_missing_dates_in_usage(start_date, end_date, meter)
     expiry_time = datetime.now(tz=pytz.timezone(TIME_ZONE)) - timedelta(days=1)
     ContactEnergySession.objects.filter(created_time__lte=expiry_time).delete()
-    sess_dbos = (ContactEnergySession.objects.filter(meter=account_and_contract)
-                 .order_by('-created_time'))
-    if not sess_dbos.exists():
+    sess_dbo = (ContactEnergySession.objects.filter(meter=account_and_contract)
+                 .order_by('-created_time').first())
+    if sess_dbo is None:
         return HttpResponse(
             f"Please log in the Contact Energy account that has access to this "
             f"meter: {account_and_contract}. Current logged-in status expires or the "
             f"account doesn't match the meter.",
             status=500)
-    sess_dbo = sess_dbos[0]
     sess_dbo.total_dates = len(missing_dates)
     sess_dbo.finished_dates = 0
     sess_dbo.failed_dates = 0
@@ -217,23 +216,17 @@ def contact_energy_usage(req):
             sess_dbo.save()
             continue
         try:
-            with transaction.atomic():
-                existed_usages = Usage.objects.filter(
-                    meter=meter, time_slot__day=date_.day,
-                    time_slot__month=date_.month, time_slot__year=date_.year,
-                )
-                existed_usages.delete()
-                for row in usage:
-                    date_time_ = pd.to_datetime(row['date'])
-                    try:
-                        amount = float(row['value'])
-                    except ValueError:
-                        warnings.append(f"Amount is not a number on {date_time_}.")
-                        amount = None
-                    new_usage = Usage(meter=meter, time_slot=date_time_, value=amount)
-                    new_usage.save()
-                sess_dbo.finished_dates = sess_dbo.finished_dates + 1
-                sess_dbo.save()
+            for row in usage:
+                date_time_ = pd.to_datetime(row['date'])
+                try:
+                    amount = float(row['value'])
+                except ValueError:
+                    warnings.append(f"Amount is not a number on {date_time_}.")
+                    amount = None
+                new_usage, _ = Usage.objects.update_or_create(
+                    meter=meter, time_slot=date_time_, value=amount)
+            sess_dbo.finished_dates = sess_dbo.finished_dates + 1
+            sess_dbo.save()
         except json.decoder.JSONDecodeError:
             warnings.append(f"Fail to parse usage on {date_} from Contact Energy.")
             sess_dbo.failed_dates = sess_dbo.failed_dates + 1
