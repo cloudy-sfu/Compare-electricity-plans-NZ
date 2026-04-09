@@ -3,7 +3,7 @@ beautifulsoup4==4.14.3
 certifi==2026.1.4
 charset-normalizer==3.4.4
 dj-database-url==3.1.0
-Django==6.0.3
+Django==6.0.4
 greenlet==3.3.0
 idna==3.11
 Jinja2==3.1.6
