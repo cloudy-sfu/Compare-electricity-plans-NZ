@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import os
 import sys
 
 import pandas as pd
@@ -75,10 +76,8 @@ parser.add_argument("-I", "--input", required=True,
 cmd, _ = parser.parse_known_args()
 
 logging.info(f"Connecting to database...")
-with open("token.json", "r") as f:
-    tokens = json.load(f)
-assert tokens.get("neon_db"), "Database connection string is not provided."
-engine = create_engine(tokens.get("neon_db"))
+assert os.environ['NEON_DB'], "Database connection string is not provided."
+engine = create_engine(os.environ['NEON_DB'])
 
 # Reflect DB schema to understand tables and FK dependencies
 metadata = MetaData()

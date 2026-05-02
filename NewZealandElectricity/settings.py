@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import json
+import os
 from pathlib import Path
+
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -21,10 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-with open("token.json") as f:
-    secrets = json.load(f)
-    SECRET_KEY = secrets.get('secret_key')
-    NEON_DB_URL = secrets.get('neon_db')
+SECRET_KEY = os.environ['SECRET_KEY']
+NEON_DB_URL = os.environ['NEON_DB']
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
