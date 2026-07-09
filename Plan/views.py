@@ -1,7 +1,9 @@
+from functools import partial
+
+import numpy as np
 import pandas as pd
-import pyecharts
-from bs4 import BeautifulSoup
 from django import forms
+from django.db.models import Min, Max
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
@@ -27,7 +29,6 @@ class ChangeChargingPlan(forms.ModelForm):
         widgets = {
             "company": forms.TextInput({"class": "form-control"}),
             "name": forms.TextInput({"class": "form-control"}),
-            "applied_date": forms.DateInput({"class": "form-control", "type": "date"}),
             "daily_fixed_price": forms.TextInput(
                 {"class": "form-control", "type": "number",
                  "step": "any"}),
@@ -118,7 +119,7 @@ class ChangePrice(forms.ModelForm):
             'plan': forms.HiddenInput(),
             "name": forms.TextInput({"class": "form-control"}),
             "unit_price": forms.TextInput({"class": "form-control", "type": "number",
-                                           "step": 0.01}),
+                                           "step": "any"}),
             "time_from": forms.TimeInput({"class": "form-control", "type": "time",
                                           "step": 1}),
             "time_to": forms.TimeInput({"class": "form-control", "type": "time",
@@ -126,9 +127,7 @@ class ChangePrice(forms.ModelForm):
         }
         help_texts = {
             "time_from": f"Time zone is {TIME_ZONE}.",
-            "time_to": "If ends at midnight or next day, set to 23:59:59 and create "
-                       "another special price record. Remember to shift \"days of week\""
-                       "one day ahead in the next record.",
+            "time_to": "If end time is smaller than start time, it means the next day.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -178,7 +177,7 @@ def change_price(req, price_id: int):
             "failed_reason": price_form.errors.as_text(),
         })
     price_form.save()
-    return redirect(f'/prices/{price.id}')
+    return redirect(f'/plans/{price.plan.id}')
 
 
 @require_POST
@@ -239,12 +238,16 @@ class Compare(forms.Form):
         help_text="Hold \"Control\" and click to select multiple items."
     )
     start_date = forms.DateField(
-        required=True, widget=forms.DateInput({
+        required=False, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
+        help_text="Optional: the earliest record in database by default. If the earliest "
+                  "record is more than 1 year before the latest record, the start date "
+                  "is 1 year before the end date."
     )
     end_date = forms.DateField(
-        required=True, widget=forms.DateInput({
+        required=False, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
+        help_text="Optional: the latest record in database by default."
     )
 
     def __init__(self, *args, **kwargs):
@@ -263,6 +266,45 @@ def view_compare(req, failed_reason=None):
     })
 
 
+def overlap(a0, a1, b0, b1): # intersection length, >= 0
+    lo, hi = max(a0, b0), min(a1, b1)
+    return max(hi - lo, pd.Timedelta(0))
+
+
+def windows(s, start, end):
+    # yield concrete [w0, w1) intervals for special `s` that could touch [start,end)
+    # scan each calendar date the slot may reference (prev day covers overnight tail)
+    for day in pd.date_range((start - pd.Timedelta(days=1)).normalize(),
+                              end.normalize(), freq="D", tz=start.tz):
+        if not getattr(s, Price.DAYS_OF_WEEK[day.dayofweek]):
+            continue
+        w0 = day + pd.Timedelta(hours=s.time_from.hour, minutes=s.time_from.minute)
+        if s.time_from < s.time_to:                       # same-day window
+            w1 = day + pd.Timedelta(hours=s.time_to.hour, minutes=s.time_to.minute)
+        else:                                             # overnight -> ends next day
+            w1 = day + pd.Timedelta(days=1,
+                    hours=s.time_to.hour, minutes=s.time_to.minute)
+        yield w0, w1
+
+
+def record_cost(row, prices, plan):
+    start = row["time_slot"]
+    end = row["time_slot_end"]
+    slot_sec = (end - start).total_seconds()
+    remaining = end - start
+    weighted = 0.0
+    for s in prices:  # earlier specials take priority
+        covered = pd.Timedelta(0)
+        for w0, w1 in windows(s, start, end):
+            covered += overlap(start, end, w0, w1)
+        covered = min(covered, remaining)
+        weighted += covered.total_seconds() * s.unit_price
+        remaining -= covered
+    weighted += remaining.total_seconds() * plan.default_unit_price
+    eff = weighted / slot_sec + plan.levy
+    return row["value"] * eff
+
+
 @require_POST
 def compare(req):
     compare_form = Compare(req.POST)
@@ -271,71 +313,74 @@ def compare(req):
     meter = compare_form.cleaned_data['meter']
     start_date = compare_form.cleaned_data['start_date']
     end_date = compare_form.cleaned_data['end_date']
-    if start_date > end_date:
-        start_date, end_date = end_date, start_date
-    start_date_midnight = (pd.to_datetime(start_date)
-                           .tz_localize(tz=TIME_ZONE, ambiguous=False))
-    end_date_next_midnight = (pd.to_datetime(end_date + pd.Timedelta(days=1))
-                              .tz_localize(tz=TIME_ZONE, ambiguous=False))
+    if start_date and end_date:
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+        start_date_midnight = (pd.to_datetime(start_date)
+                               .tz_localize(tz=TIME_ZONE, ambiguous=False))
+        end_date_next_midnight = (pd.to_datetime(end_date + pd.Timedelta(days=1))
+                                  .tz_localize(tz=TIME_ZONE, ambiguous=False))
+    else:
+        usage_scope = Usage.objects.filter(meter=meter, value__isnull=False)
+        if usage_scope.count() == 0:
+            return HttpResponse(f"Meter {meter} has no record.", status=500)
+        usage_stats = usage_scope.aggregate(
+            start_date=Min('time_slot'),
+            end_date=Max('time_slot'),
+        )
+        start_date_midnight = pd.to_datetime(usage_stats['start_date'])
+        end_date_next_midnight = pd.to_datetime(
+            usage_stats['end_date'] + pd.Timedelta(days=1))
+        start_date_midnight = max(
+            start_date_midnight, end_date_next_midnight - pd.Timedelta(days=366))
     usage = Usage.objects.filter(
         meter=meter, time_slot__gte=start_date_midnight,
         time_slot__lt=end_date_next_midnight, value__isnull=False,
     ).order_by('time_slot').values('time_slot', 'value')
     usage = pd.DataFrame.from_records(usage)
     usage['time_slot'] = usage['time_slot'].dt.tz_convert(tz=TIME_ZONE)
-    usage['time'] = usage['time_slot'].dt.time
-    usage['day_of_week'] = usage['time_slot'].dt.dayofweek
 
-    plan_name = []
-    total_price = []
+    if usage.shape[0] > 2:
+        last_2_idx = usage.index[-2]
+        last_1_idx = usage.index[-1]
+        usage['time_slot_end'] = usage['time_slot'].shift(-1)
+        usage.loc[last_1_idx, 'time_slot_end'] = usage.loc[last_1_idx, 'time_slot'] + \
+            (usage.loc[last_2_idx, 'time_slot_end'] - usage.loc[last_2_idx, 'time_slot'])
+    elif usage.shape[0] == 2:
+        usage['time_slot_end'] = usage['time_slot'] + \
+            (usage.loc[1, 'time_slot'] - usage.loc[0, 'time_slot'])
+    elif usage.shape[0] == 1:
+        usage['time_slot_end'] = usage['time_slot'] + pd.Timedelta(hours=1)
+    else:
+        plans = [
+            {
+                "Company": plan.company,
+                "Plan name": plan.name,
+                "Total fee": 0,
+            }
+            for plan in compare_form.cleaned_data['plans']
+        ]
+        plans = pd.DataFrame(plans)
+        plans.sort_values(inplace=True, by="Total fee")
+        plans_html = plans.to_html(classes='table mt-4 table-bordered', index=False)
+        return render(req, "compare_results.html", {"plans": plans_html})
+
     total_days = (end_date_next_midnight - start_date_midnight) / pd.Timedelta(days=1)
-    for i, plan in enumerate(compare_form.cleaned_data['plans']):
-        usage[str(plan.id)] = plan.default_unit_price
-        for price in plan.price_set.all():
-            for j, day in enumerate(Price.DAYS_OF_WEEK):
-                if getattr(price, day):
-                    usage.loc[(usage['day_of_week'] == j) &
-                              (usage['time'] < price.time_to) &
-                              (usage['time'] >= price.time_from), str(plan.id)] = (
-                        price.unit_price
-                    )
-        total_price.append(round((
-                (usage[str(plan.id)] * (usage['value'] + plan.levy)).sum()
-                + total_days * plan.daily_fixed_price
-        ) * (1 + plan.GST_ratio)) / 100)
-        plan_name.append(("\n\n\n" if i % 2 == 0 else "") +
-                         f"{plan.company}\n{plan.name}\n{plan.applied_date}")
+    plans = []
+    for plan in compare_form.cleaned_data['plans']:
+        record_cost_per = partial(record_cost, prices=plan.price_set.all(), plan=plan)
+        variable_fee = usage.apply(record_cost_per, axis=1).sum()
+        fixed_fee = total_days * plan.daily_fixed_price
+        plans.append({
+            "Company": plan.company,
+            "Plan name": plan.name,
+            "Total fee": round(
+                (variable_fee + fixed_fee) * (1 + plan.GST_ratio)
+                , 2
+            ),
+        })
+    plans = pd.DataFrame(plans)
+    plans.sort_values(inplace=True, by="Total fee")
+    plans_html = plans.to_html(classes='table mt-4 table-bordered', index=False)
 
-    bar = pyecharts.charts.Bar()
-    bar.add_xaxis(plan_name)
-    bar.add_yaxis("Electricity fee (NZD)", total_price)
-    bar.set_global_opts(
-        title_opts=pyecharts.options.TitleOpts(
-            title="Electricity fee",
-        ),
-        xaxis_opts=pyecharts.options.AxisOpts(
-            type_="category", name="Plan",
-            axislabel_opts=pyecharts.options.LabelOpts(interval=0),
-        ),
-        yaxis_opts=pyecharts.options.AxisOpts(min_=0, name="Electricity fee (NZD)"),
-        legend_opts=pyecharts.options.LegendOpts(is_show=False),
-    )
-    bar_grid = pyecharts.charts.Grid(init_opts=pyecharts.options.InitOpts(width="100%"))
-    bar_grid.add(bar, grid_opts=pyecharts.options.GridOpts(pos_bottom="20%"))
-
-    tab = pyecharts.charts.Tab(page_title="New Zealand Electricity")
-    tab.add(bar_grid, "Comparison")
-    htm = tab.render_embed()
-
-    tree = BeautifulSoup(htm, 'html.parser')
-    tab_tag = tree.find('div', class_='tab')
-    back_tag = tree.new_tag(
-        'a', href='/compare',
-        style='font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; '
-              'padding: 10px; '
-    )
-    back_tag.string = 'Back'
-    if tab_tag:
-        tab_tag.insert_before(back_tag)
-
-    return HttpResponse(str(tree))
+    return render(req, "compare_results.html", {"plans": plans_html})

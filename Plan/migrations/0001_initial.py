@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('daily_fixed_price', models.FloatField(help_text='Unit: New Zealand cent')),
                 ('GST_ratio', models.FloatField(default=0.15)),
                 ('levy', models.FloatField(help_text='Unit: New Zealand cent')),
-                ('default_unit_price', models.FloatField(help_text='The unit price of "all other time". It means the time period which is not mentioned by any of linked Price records. Unit: New Zealand cent')),
+                ('default_unit_price', models.FloatField(help_text='The unit price of "all other time". It means the time period which is not mentioned by any of linked Price records.')),
             ],
         ),
         migrations.CreateModel(

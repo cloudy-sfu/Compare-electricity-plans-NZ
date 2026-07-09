@@ -5,17 +5,16 @@ from django.db import models
 class ChargingPlan(models.Model):
     company = models.CharField(max_length=32)
     name = models.CharField(max_length=64)
-    applied_date = models.DateField()
-    daily_fixed_price = models.FloatField(help_text="Exclude GST. Unit: New Zealand cent")
+    daily_fixed_price = models.FloatField(help_text="Exclude GST.")
     GST_ratio = models.FloatField(default=0.15)
-    levy = models.FloatField(help_text="Exclude GST. Unit: New Zealand cent")
+    levy = models.FloatField(help_text="Exclude GST.")
     default_unit_price = models.FloatField(
         help_text="The unit price in other time. It excludes the time when special prices "
-                  "are applied. Exclude GST.  Unit: New Zealand cent"
+                  "are applied. Exclude GST."
     )
 
     def __str__(self):
-        return f"{self.company} {self.name} {self.applied_date.strftime('%Y-%m-%d')}"
+        return f"{self.company}, {self.name}"
 
 
 class Price(models.Model):
@@ -25,7 +24,7 @@ class Price(models.Model):
         help_text="Time period name that this price applies on, e.g. peak, off-peak, "
                   "daytime, night, weekdays, weekend."
     )
-    unit_price = models.FloatField(help_text="Exclude GST. Unit: New Zealand cent")
+    unit_price = models.FloatField(help_text="Exclude GST.")
     DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
                     'Sunday']
     for day in DAYS_OF_WEEK:
@@ -33,8 +32,7 @@ class Price(models.Model):
     time_from = models.TimeField(help_text="In format of HH:MM:SS.")
     time_to = models.TimeField(
         help_text="In format of HH:MM:SS. "
-                  "If ends at midnight, input 23:59:59. If lasts to next day, create "
-                  "another record that time_from = 00:00:00 (remember days of week +1)."
+                  "If end time is smaller than start time, it means the next day."
     )
 
     def day_of_week_full_name(self):

@@ -21,13 +21,12 @@
             </div>
             <table class="table" style="overflow-x: auto;">
                 <thead>
-                <tr><th>Company</th><th>Name</th><th>Date</th><th>Actions</th></tr>
+                <tr><th>Company</th><th>Name</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                 {% for plan in plans %}
                     <tr>
                     <td>{{ plan.company }}</td><td>{{ plan.name }}</td>
-                    <td style="text-wrap: nowrap;">{{ plan.applied_date }}</td>
                     <td style="text-wrap: nowrap">
                         <a href="/plans/{{ plan.id }}">Change</a>&nbsp;&nbsp;
                         <a href="/plans/delete/{{ plan.id }}">Delete</a>

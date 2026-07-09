@@ -13,17 +13,17 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='chargingplan',
             name='daily_fixed_price',
-            field=models.FloatField(help_text='Exclude GST. Unit: New Zealand cent'),
+            field=models.FloatField(help_text='Exclude GST.'),
         ),
         migrations.AlterField(
             model_name='chargingplan',
             name='default_unit_price',
-            field=models.FloatField(help_text='The unit price in other time. It excludes the time when special prices are applied. Exclude GST.  Unit: New Zealand cent'),
+            field=models.FloatField(help_text='The unit price in other time. It excludes the time when special prices are applied. Exclude GST. '),
         ),
         migrations.AlterField(
             model_name='chargingplan',
             name='levy',
-            field=models.FloatField(help_text='Exclude GST. Unit: New Zealand cent'),
+            field=models.FloatField(help_text='Exclude GST.'),
         ),
         migrations.AlterField(
             model_name='price',
@@ -38,6 +38,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='price',
             name='unit_price',
-            field=models.FloatField(help_text='Exclude GST. Unit: New Zealand cent'),
+            field=models.FloatField(help_text='Exclude GST.'),
         ),
     ]

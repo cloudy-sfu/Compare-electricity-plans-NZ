@@ -9,7 +9,6 @@ from django.db.models import Q, Min, Max
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
-from scipy.stats import mode
 
 from NewZealandElectricity.settings import TIME_ZONE
 from .admin import get_meter_types
@@ -194,48 +193,66 @@ def check_integrity(req):
             "meter": str(meter),
             "start_date": start_date,
             "end_date": end_date,
-            "min_time": '',
-            "max_time": '',
-            "n_missing": '',
-            "n_total": usage.shape[0],
-            "missing_time": [],
-            "sampling_frequency": '',
+            "segments": [],
         })
     usage['time_slot'] = usage['time_slot'].dt.tz_convert(tz=TIME_ZONE)
-    sampling_frequency = usage['time_slot'].diff() / pd.Timedelta(seconds=1)
-    sampling_frequency_mode = pd.Timedelta(seconds=mode(sampling_frequency).mode)
-    min_time = usage.iloc[0, 0]
-    max_time = usage.iloc[-1, 0]
-    full_index = pd.date_range(min_time, max_time, freq=sampling_frequency_mode)
-    missing_time = full_index.difference(usage['time_slot'])
+    
+    diff_b = usage['time_slot'].diff()
+    diff_f = usage['time_slot'].shift(-1) - usage['time_slot']
+    interval = pd.concat([diff_b, diff_f], axis=1).min(axis=1)
+    
+    if interval.isna().all():
+        interval = interval.fillna(pd.Timedelta(hours=1))
+        
+    freq_counts = interval.value_counts()
+    valid_freqs = freq_counts[freq_counts > max(2, len(interval) * 0.01)].index
+    if valid_freqs.empty:
+        valid_freqs = pd.Index([interval.mode()[0]])
+        
+    smoothed_interval = interval.where(interval.isin(valid_freqs)).ffill().bfill()
+    usage['segment_id'] = (smoothed_interval != smoothed_interval.shift()).cumsum()
+    
+    segments_context = []
+    for seg_id, group in usage.groupby('segment_id'):
+        min_time = group['time_slot'].iloc[0]
+        max_time = group['time_slot'].iloc[-1]
+        freq = smoothed_interval.loc[group.index[0]]
+        
+        full_index = pd.date_range(min_time, max_time, freq=freq)
+        missing_time = full_index.difference(group['time_slot'])
 
-    if missing_time.shape[0] == 0:
-        missing_time_pairs = pd.DataFrame(columns=['Start time', 'End time'])
-    else:
-        common_mask = missing_time.diff() > sampling_frequency_mode
-        common_idx = np.argwhere(common_mask).flatten()
-        start_idx = [0] + common_idx.tolist()
-        missing_start_time = missing_time[start_idx]
-        end_idx = (common_idx - 1).tolist() + [missing_time.shape[0] - 1]
-        missing_end_time = missing_time[end_idx]
-        missing_time_pairs = pd.DataFrame({
-            "Start time": missing_start_time,
-            "End time": missing_end_time,
+        if missing_time.shape[0] == 0:
+            missing_time_pairs = pd.DataFrame(columns=['Start time', 'End time'])
+        else:
+            common_mask = missing_time.to_series().diff() > freq
+            common_idx = np.argwhere(common_mask.values).flatten()
+            start_idx = [0] + common_idx.tolist()
+            missing_start_time = missing_time[start_idx]
+            end_idx = (common_idx - 1).tolist() + [missing_time.shape[0] - 1]
+            missing_end_time = missing_time[end_idx]
+            missing_time_pairs = pd.DataFrame({
+                "Start time": missing_start_time,
+                "End time": missing_end_time,
+            })
+
+        theoretical_total = round((max_time - min_time) / freq) + 1
+        
+        segments_context.append({
+            "min_time": min_time,
+            "max_time": max_time,
+            "n_missing": missing_time.shape[0],
+            "n_total": group.shape[0],
+            "theoretical_total": theoretical_total,
+            "missing_time": missing_time_pairs.to_html(
+                classes='table table-striped table-bordered', index=False),
+            "sampling_frequency": freq,
         })
 
-    theoretical_total = round((max_time - min_time) / sampling_frequency_mode) + 1
     return render(req, 'integrity_results.html', context={
         "meter": str(meter),
         "start_date": start_date,
         "end_date": end_date,
-        "min_time": min_time,
-        "max_time": max_time,
-        "n_missing": missing_time.shape[0],
-        "n_total": usage.shape[0],
-        "theoretical_total": theoretical_total,
-        "missing_time": missing_time_pairs.to_html(
-            classes='table table-striped table-bordered', index=False),
-        "sampling_frequency": sampling_frequency_mode,
+        "segments": segments_context,
     })
 
 
@@ -316,8 +333,19 @@ def select_meter(req):
             end_date=Max('time_slot'),
         )
         start_date_midnight = pd.to_datetime(usage_stats['start_date'])
-        end_date_next_midnight = pd.to_datetime(
-            usage_stats['end_date'] + pd.Timedelta(days=1))
+        if start_date_midnight.tzinfo is not None:
+            start_date_midnight = start_date_midnight.tz_convert(TIME_ZONE)
+        else:
+            start_date_midnight = start_date_midnight.tz_localize(TIME_ZONE)
+        start_date_midnight = start_date_midnight.normalize()
+
+        end_date_next_midnight = pd.to_datetime(usage_stats['end_date'])
+        if end_date_next_midnight.tzinfo is not None:
+            end_date_next_midnight = end_date_next_midnight.tz_convert(TIME_ZONE)
+        else:
+            end_date_next_midnight = end_date_next_midnight.tz_localize(TIME_ZONE)
+        end_date_next_midnight = end_date_next_midnight.normalize() + pd.Timedelta(days=1)
+        
         start_date_midnight = max(
             start_date_midnight, end_date_next_midnight - pd.Timedelta(days=366))
         start_date = start_date_midnight.date()
