@@ -8,6 +8,7 @@ class Meter(models.Model):
     provider = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     meter_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('provider', 'meter_id')
+    start_date = models.DateField(null=True, auto_now_add=True)
 
     class Meta:
         constraints = [

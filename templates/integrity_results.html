@@ -13,22 +13,19 @@
         <div class="col-md-6">
             <a href="/integrity">Back</a>
             <table class="table mt-4">
-                <thead>
-                <tr><td>Item</td><td>Value</td></tr>
-                </thead>
                 <tbody>
                 <tr><td>Meter</td><td>{{ meter }}</td></tr>
                 <tr><td>Request start date</td><td>{{ start_date | date:"Y-m-d" }}</td></tr>
                 <tr><td>Request end date</td><td>{{ end_date | date:"Y-m-d" }}</td></tr>
                 <tr>
                     <td>Observed start time</td>
-                    <td {% if min_time.date != start_date %} class="text-danger" {% endif %}>
+                    <td {% if start_date and min_time.date != start_date %} class="text-danger" {% endif %}>
                         {{ min_time | date:"Y-m-d H:i:s O" }}
                     </td>
                 </tr>
                 <tr>
                     <td>Observed end time</td>
-                    <td {% if max_time.date != end_date %} class="text-danger" {% endif %}>
+                    <td {% if end_date and max_time.date != end_date %} class="text-danger" {% endif %}>
                         {{ max_time | date:"Y-m-d H:i:s O" }}
                     </td>
                 </tr>
@@ -48,7 +45,7 @@
                 <tr>
                     <td>Number of missing records</td>
                     <td {% if n_missing > 0 %} class="text-danger" {% endif %}>
-                        {{ n_missing }} / {{ n_total }}
+                        {{ n_missing }} / {{ theoretical_total }}
                     </td>
                 </tr>
                 </tbody>

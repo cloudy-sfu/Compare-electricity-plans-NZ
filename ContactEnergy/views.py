@@ -1,6 +1,4 @@
 import json
-import os
-import sqlite3
 import time
 import uuid
 from datetime import datetime, timedelta, date
@@ -11,9 +9,7 @@ import pytz
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
-from django.db import transaction, OperationalError, ProgrammingError
+from django.db import OperationalError, ProgrammingError
 from django.db.models.functions import TruncDate
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render

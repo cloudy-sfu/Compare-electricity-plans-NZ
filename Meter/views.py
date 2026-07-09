@@ -9,13 +9,14 @@ from django.db.models import Q, Min, Max
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
-from pyecharts.commons.utils import JsCode
 from scipy.stats import mode
 
 from NewZealandElectricity.settings import TIME_ZONE
 from .admin import get_meter_types
 from .models import Meter, Usage
 
+# Set the locale to English to bypass browser language detection issues (e.g., en-NZ)
+pyecharts.globals.CurrentConfig.LOCALE = pyecharts.globals.Locale.EN
 
 # Create your views here.
 def main(req):
@@ -140,12 +141,14 @@ class CheckIntegrity(forms.Form):
         widget=forms.Select({"class": "form-select", "style": "white-space: normal;"})
     )
     start_date = forms.DateField(
-        required=True, widget=forms.DateInput({
+        required=False, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
+        help_text="Optional: the earliest record in database by default."
     )
     end_date = forms.DateField(
-        required=True, widget=forms.DateInput({
+        required=False, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
+        help_text="Optional: the latest record in database by default."
     )
 
     def __init__(self, *args, **kwargs):
@@ -169,16 +172,22 @@ def check_integrity(req):
     meter = ci.cleaned_data['meter']
     start_date = ci.cleaned_data['start_date']
     end_date = ci.cleaned_data['end_date']
-    if start_date > end_date:
-        start_date, end_date = end_date, start_date
-    start_date_midnight = (pd.to_datetime(start_date)
-                           .tz_localize(tz=TIME_ZONE, ambiguous=False))
-    end_date_next_midnight = (pd.to_datetime(end_date + pd.Timedelta(days=1))
-                              .tz_localize(tz=TIME_ZONE, ambiguous=False))
-    usage = Usage.objects.filter(
-        meter=meter, time_slot__gte=start_date_midnight,
-        time_slot__lt=end_date_next_midnight, value__isnull=False,
-    ).order_by('time_slot').values('time_slot')
+    if start_date and end_date:
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+        start_date_midnight = (pd.to_datetime(start_date)
+                               .tz_localize(tz=TIME_ZONE, ambiguous=False))
+        end_date_next_midnight = (pd.to_datetime(end_date + pd.Timedelta(days=1))
+                                  .tz_localize(tz=TIME_ZONE, ambiguous=False))
+        usage = Usage.objects.filter(
+            meter=meter, time_slot__gte=start_date_midnight,
+            time_slot__lt=end_date_next_midnight, value__isnull=False,
+        ).order_by('time_slot').values('time_slot')
+    else:
+        usage_scope = Usage.objects.filter(meter=meter, value__isnull=False)
+        if usage_scope.count() == 0:
+            return HttpResponse(f"Meter {meter} has no record.", status=500)
+        usage = usage_scope.order_by('time_slot').values('time_slot')
     usage = pd.DataFrame.from_records(usage)
     if usage.shape[0] < 2:
         return render(req, 'integrity_results.html', context={
@@ -236,12 +245,16 @@ class SelectMeter(forms.Form):
         widget=forms.Select({"class": "form-select"}),
     )
     start_date = forms.DateField(
-        required=True, widget=forms.DateInput({
+        required=False, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
+        help_text="Optional: the earliest record in database by default. If the earliest "
+                  "record is more than 1 year before the latest record, the start date "
+                  "is 1 year before the end date."
     )
     end_date = forms.DateField(
-        required=True, widget=forms.DateInput({
+        required=False, widget=forms.DateInput({
             "class": "form-control", "type": "date", "min": "1996-01-01"}),
+        help_text="Optional: the latest record in database by default."
     )
 
     def __init__(self, *args, **kwargs):
@@ -287,19 +300,34 @@ def select_meter(req):
     meter = select_meter_form.cleaned_data['meter']
     start_date = select_meter_form.cleaned_data['start_date']
     end_date = select_meter_form.cleaned_data['end_date']
-    if start_date > end_date:
-        start_date, end_date = end_date, start_date
-    start_date_midnight = (pd.to_datetime(start_date)
-                           .tz_localize(tz=TIME_ZONE, ambiguous=False))
-    end_date_next_midnight = (pd.to_datetime(end_date + pd.Timedelta(days=1))
-                              .tz_localize(tz=TIME_ZONE, ambiguous=False))
+    if start_date and end_date:
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+        start_date_midnight = (pd.to_datetime(start_date)
+                               .tz_localize(tz=TIME_ZONE, ambiguous=False))
+        end_date_next_midnight = (pd.to_datetime(end_date + pd.Timedelta(days=1))
+                                  .tz_localize(tz=TIME_ZONE, ambiguous=False))
+    else:
+        usage_scope = Usage.objects.filter(meter=meter, value__isnull=False)
+        if usage_scope.count() == 0:
+            return HttpResponse(f"Meter {meter} has no record.", status=500)
+        usage_stats = usage_scope.aggregate(
+            start_date=Min('time_slot'),
+            end_date=Max('time_slot'),
+        )
+        start_date_midnight = pd.to_datetime(usage_stats['start_date'])
+        end_date_next_midnight = pd.to_datetime(
+            usage_stats['end_date'] + pd.Timedelta(days=1))
+        start_date_midnight = max(
+            start_date_midnight, end_date_next_midnight - pd.Timedelta(days=366))
+        start_date = start_date_midnight.date()
+        end_date = end_date_next_midnight.date()
     usage = Usage.objects.filter(
         meter=meter, time_slot__gte=start_date_midnight,
         time_slot__lt=end_date_next_midnight, value__isnull=False,
     ).order_by('time_slot').values('time_slot', 'value')
     usage = pd.DataFrame.from_records(usage)
     usage['time_slot'] = usage['time_slot'].dt.tz_convert(tz=TIME_ZONE)
-
     line = pyecharts.charts.Line(init_opts=pyecharts.options.InitOpts(width="100%"))
     line.add_xaxis(usage['time_slot'].dt.strftime("%Y-%m-%d %H:%M").tolist())
     line.add_yaxis(
@@ -321,7 +349,7 @@ def select_meter(req):
     usage_daily = usage.groupby('date').aggregate('sum', 'value')
     usage_daily.reset_index(inplace=True)
     usage_daily['value'] = usage_daily['value'].round(2)
-    tooltip_formatter = JsCode("""function(params){
+    tooltip_formatter = pyecharts.commons.utils.JsCode("""function(params){
     const date = params.value[0];
     const value = params.value[1];
     return date + '<br>' + value + ' kWh';
@@ -385,10 +413,10 @@ def select_meter(req):
     )
 
     tab = pyecharts.charts.Tab(page_title="New Zealand Electricity")
-    tab.add(line, "Time series view")
-    tab.add(heatmap, "Calendar view")
-    tab.add(bar, "Circadian view")
     tab.add(total, "Total view")
+    tab.add(bar, "Circadian view")
+    tab.add(heatmap, "Calendar view")
+    tab.add(line, "Time series view")
     htm = tab.render_embed()
 
     tree = BeautifulSoup(htm, 'html.parser')
