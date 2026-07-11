@@ -6,9 +6,10 @@
 
 [Power switch](https://www.powerswitch.org.nz/) helps households compare residential electricity by estimating annual consumption based on typical usage profiles. However, its estimation is too general to capture the diverse and individualized electricity usage behaviors of different households, often leading to imprecise estimates. This program has the same objective as *power switch*, and tries to improve the accuracy by reading personal electricity usage history from the users' meter. It doesn't collect the list of electricity charging plans widely, but allows the user to manually add charging plans to compare.
 
-**Contribution:** The program can only read electricity usage from the following companies. 
+**Contribution:** The program can only read electricity usage from the following companies.
 
-- Contact
+- Contact Energy
+- Mercury
 
 If you can provide account of other electricity provider, or can write a web crawler to get data from other electricity provider, welcome to contribute.
 
@@ -52,11 +53,5 @@ Start-Process "http://localhost:8000"
 python manage.py runserver
 ```
 
-You can find charging plans in the following pages. It's also an option to use *power switch* as an index and search the companies' official websites.
+You can find charging plans in electricity providers' websites or "power switch".
 
-- [Contact](https://journey.contact.co.nz/residential/find-a-plan)
-- [Genesis](https://www.genesisenergy.co.nz/join)
-- [Powershop](https://www.powershop.co.nz/get-a-price/)
-- [Mercury](https://www.mercury.co.nz/electricity?lcsp=1YEAR)
-- [Flick](https://www.flickelectric.co.nz/)
-- [Meridian](https://www.meridianenergy.co.nz/for-home)

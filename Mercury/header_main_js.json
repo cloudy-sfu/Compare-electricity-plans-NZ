@@ -1,0 +1,18 @@
+{
+    "accept": "*/*",
+    "accept-encoding": "gzip, deflate, br, zstd",
+    "accept-language": "en-NZ,en;q=0.9",
+    "cache-control": "no-cache",
+    "dnt": "1",
+    "origin": "https://myaccount.mercury.co.nz",
+    "pragma": "no-cache",
+    "priority": "u=1",
+    "referer": "https://myaccount.mercury.co.nz/",
+    "sec-ch-ua": "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Google Chrome\";v=\"150\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-fetch-dest": "script",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
+}

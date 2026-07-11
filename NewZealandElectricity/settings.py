@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # customized
     'django.contrib.admin',
     'ContactEnergy',
+    'Mercury',
     'Meter',
     'Plan',
 ]

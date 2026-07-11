@@ -28,8 +28,6 @@ with open("ContactEnergy/header_csrf_token.json") as f:
     header_csrf_token = json.load(f)
 with open("ContactEnergy/header_usage.json") as f:
     header_usage = json.load(f)
-sess = Session()
-sess.trust_env = False
 
 
 class ContactEnergyLogin(forms.Form):
@@ -103,6 +101,8 @@ def contact_energy_auth(req):
     username = login_form.cleaned_data.get('username')
     password = login_form.cleaned_data.get('password')
     # Log in, get authentication (session).
+    sess = Session()
+    sess.trust_env = False
     resp_login = sess.post(
         url="https://api.contact-digital-prod.net/login/v2",
         data=json.dumps({"password": password, "username": username}),
@@ -193,6 +193,8 @@ def contact_energy_usage(req):
     contract_id = account_and_contract.contract_id
     account_number = account_and_contract.account_number
     warnings = []
+    sess = Session()
+    sess.trust_env = False
     for date_ in missing_dates:
         url_usage = (f"https://api.contact-digital-prod.net/usage/v2/{contract_id}?"
                      f"ba={account_number}&interval=hourly&from={date_}&to={date_}")

@@ -21,6 +21,7 @@ pyecharts.globals.CurrentConfig.LOCALE = pyecharts.globals.Locale.EN
 def main(req):
     data_source = [
         {"display_name": "Contact Energy", "entry": "/get_data_contact"},
+        {"display_name": "Mercury", "entry": "/get_data_mercury"},
     ]
     return render(req, "index.html", context={
         "data_source": data_source,
@@ -355,6 +356,8 @@ def select_meter(req):
         time_slot__lt=end_date_next_midnight, value__isnull=False,
     ).order_by('time_slot').values('time_slot', 'value')
     usage = pd.DataFrame.from_records(usage)
+    if usage.shape[0] == 0:
+        return view_select_meter(req, failed_reason="No electricity usage.")
     usage['time_slot'] = usage['time_slot'].dt.tz_convert(tz=TIME_ZONE)
     line = pyecharts.charts.Line(init_opts=pyecharts.options.InitOpts(width="100%"))
     line.add_xaxis(usage['time_slot'].dt.strftime("%Y-%m-%d %H:%M").tolist())

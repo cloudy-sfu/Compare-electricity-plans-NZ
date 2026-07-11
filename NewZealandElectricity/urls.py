@@ -19,6 +19,7 @@ from django.urls import path
 import ContactEnergy.views as v1
 import Meter.views as v2
 import Plan.views as v3
+import Mercury.views as v4
 
 urlpatterns = [
     # path('admin/', admin.site.urls),
@@ -27,6 +28,10 @@ urlpatterns = [
     path('get_data_contact/account', v1.contact_energy_account),
     path('get_data_contact/usage', v1.contact_energy_usage),
     path('get_data_contact/progress', v1.contact_energy_progress),
+    path('get_data_mercury', v4.mercury_login),
+    path('get_data_mercury/auth', v4.mercury_auth),
+    path('get_data_mercury/account', v4.mercury_account),
+    path('get_data_mercury/usage', v4.mercury_usage),
     path('', v2.main),
     path('migrate_meters', v2.view_migrate_meters),
     path('migrate_meters/migrate', v2.migrate_meters),

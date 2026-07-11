@@ -1,7 +1,10 @@
 asgiref==3.11.0
 beautifulsoup4==4.14.3
 certifi==2026.1.4
+cffi==2.1.0
 charset-normalizer==3.4.4
+chompjs==1.4.1
+cryptography==49.0.0
 dj-database-url==3.1.0
 Django==6.0.4
 greenlet==3.3.0
@@ -14,6 +17,7 @@ pandas==2.3.3
 pipdeptree==2.30.0
 prettytable==3.17.0
 psycopg2-binary==2.9.11
+pycparser==3.0
 pyecharts==2.0.9
 python-dateutil==2.9.0.post0
 pytz==2025.2
