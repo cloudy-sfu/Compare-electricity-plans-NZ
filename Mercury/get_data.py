@@ -7,6 +7,7 @@ import chompjs
 import uuid
 from urllib.parse import parse_qs, urlparse
 import pandas as pd
+from bs4 import BeautifulSoup
 from requests import Session
 
 with open("Mercury/header_usage.json") as f:
@@ -19,6 +20,8 @@ with open("Mercury/header_self_asserted.json") as f:
     header_self_asserted = json.load(f)
 with open("Mercury/header_confirmed.json") as f:
     header_confirmed = json.load(f)
+regex_main_js = re.compile(r'^main-[A-Za-z0-9]+\.js$')
+regex_bt = re.compile(r"var\s*Bt\s*=\s*({.*?})\s*;")
 
 
 def pkce_pair():
@@ -38,18 +41,30 @@ def decode_jwt_payload(jwt_payload):
 
 
 def login(username, password):
-    # Get main-XEUMSWUY.js
+    # Find suffix of "main-*.js" script
     sess_1 = Session()
     sess_1.trust_env = False
+    my_account_response = sess_1.get(
+        "https://myaccount.mercury.co.nz/",
+        headers=header_main_js
+    )
+    my_account_page = BeautifulSoup(my_account_response.text, "html.parser")
+    main_js_name = my_account_page.find("script", src=regex_main_js)
+    if not main_js_name:
+        raise Exception("Cannot find main JS script name from "
+                        "https://myaccount.mercury.co.nz/")
+    main_js_name = main_js_name.get("src")
+
+    # Get main-*.js
     main_js_response = sess_1.get(
-        "https://myaccount.mercury.co.nz/main-XEUMSWUY.js",
+        f"https://myaccount.mercury.co.nz/{main_js_name}",
         headers=header_main_js
     )
     main_js = main_js_response.text
-    bt = re.search(r"var\s*Bt\s*=\s*({.*?})\s*;", main_js)
+    bt = regex_bt.search(main_js)
     if not bt:
         raise Exception("Cannot parse MSAL fields from "
-                        "https://myaccount.mercury.co.nz/main-XEUMSWUY.js")
+                        f"https://myaccount.mercury.co.nz/{main_js_name}")
     bt = bt.group(1)
     bt = chompjs.parse_js_object(bt)
 

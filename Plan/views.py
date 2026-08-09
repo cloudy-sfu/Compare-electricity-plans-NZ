@@ -338,6 +338,11 @@ def compare(req):
         time_slot__lt=end_date_next_midnight, value__isnull=False,
     ).order_by('time_slot').values('time_slot', 'value')
     usage = pd.DataFrame.from_records(usage)
+    if usage.shape[0] == 0:
+        return render(req, "compare.html", {
+            "failed_reason": "No electricity usage.",
+            "compare_form": compare_form
+        })
     usage['time_slot'] = usage['time_slot'].dt.tz_convert(tz=TIME_ZONE)
 
     if usage.shape[0] > 2:
