@@ -1,9 +1,4 @@
-from django.shortcuts import render
-import json
-import time
-import uuid
 from datetime import datetime, timedelta, date
-from random import uniform
 
 import pandas as pd
 import pytz
@@ -12,10 +7,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import OperationalError, ProgrammingError
 from django.db.models.functions import TruncDate
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
-from requests import Session
 
 from Meter.models import Meter, Usage
 from NewZealandElectricity.settings import TIME_ZONE
@@ -41,7 +35,7 @@ def validate_end_date(input_date):
 
 
 def validate_start_date(input_date):
-    # Contact Energy is founded in 1999-04-01.
+    # Mercury is founded in 1999-04-01.
     earliest_date = date(1999, 4, 1)
     if input_date < earliest_date:
         raise ValidationError("The date cannot be earlier than " + earliest_date.strftime("%Y-%m-%d"))
@@ -184,9 +178,16 @@ def mercury_usage(req):
             account_and_contract.service_id,
             start_date_midnight, end_date_next_midnight
         )
-        for time_slot, value in usages.items():
-            new_usage, _ = Usage.objects.update_or_create(
-                meter=meter, time_slot=time_slot, value=value)
+        usages = [
+            Usage(meter=meter, time_slot=time_slot, value=value)
+            for time_slot, value in usages.items()
+        ]
+        Usage.objects.bulk_create(
+            usages,
+            update_conflicts=True,
+            unique_fields=['meter', 'time_slot'],
+            update_fields=['value']
+        )
     except Exception as e:
         return mercury_account(req, failed_reason=f"{type(e).__name__}: {e}")
     else:

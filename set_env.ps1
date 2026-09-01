@@ -1,5 +1,4 @@
-# Requires PowerShell 7 or later
-# Usage: . ./set_env.ps1 (Dot-sourcing recommended)
+# Requires PowerShell 7
 
 $EnvFilePath = Join-Path $PSScriptRoot ".env"
 
