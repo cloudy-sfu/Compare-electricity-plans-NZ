@@ -6,7 +6,7 @@ charset-normalizer==3.4.4
 chompjs==1.4.1
 cryptography==50.0.0
 dj-database-url==3.1.0
-Django==6.0.4
+Django==6.0.8
 greenlet==3.3.0
 idna==3.11
 Jinja2==3.1.6
